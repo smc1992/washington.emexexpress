@@ -19,7 +19,23 @@ RUN apk add --no-cache \
     && rm -rf /var/cache/apk/*
 
 # Configure PHP-FPM to use TCP port 9000 (more reliable in containers)
-RUN sed -i 's/listen = \/run\/php\/php-fpm.sock/listen = 127.0.0.1:9000/' /etc/php*/php-fpm.d/www.conf
+RUN if [ -f /etc/php/php-fpm.d/www.conf ]; then \
+        sed -i 's/listen = \/run\/php\/php-fpm.sock/listen = 127.0.0.1:9000/' /etc/php/php-fpm.d/www.conf; \
+    elif [ -f /etc/php8/php-fpm.d/www.conf ]; then \
+        sed -i 's/listen = \/run\/php\/php-fpm.sock/listen = 127.0.0.1:9000/' /etc/php8/php-fpm.d/www.conf; \
+    else \
+        echo "Creating PHP-FPM config..."; \
+        mkdir -p /etc/php/php-fpm.d; \
+        echo "[www]" > /etc/php/php-fpm.d/www.conf; \
+        echo "listen = 127.0.0.1:9000" >> /etc/php/php-fpm.d/www.conf; \
+        echo "user = nginx" >> /etc/php/php-fpm.d/www.conf; \
+        echo "group = nginx" >> /etc/php/php-fpm.d/www.conf; \
+        echo "pm = dynamic" >> /etc/php/php-fpm.d/www.conf; \
+        echo "pm.max_children = 5" >> /etc/php/php-fpm.d/www.conf; \
+        echo "pm.start_servers = 2" >> /etc/php/php-fpm.d/www.conf; \
+        echo "pm.min_spare_servers = 1" >> /etc/php/php-fpm.d/www.conf; \
+        echo "pm.max_spare_servers = 3" >> /etc/php/php-fpm.d/www.conf; \
+    fi
 
 # Set working directory
 WORKDIR /var/www/html
