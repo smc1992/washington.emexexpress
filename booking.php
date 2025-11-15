@@ -1,12 +1,59 @@
 <?php
-// Airfreight Booking Form Handler
-// Sends all requests to ops@emexexpress.de
+// Universal Airfreight Booking Form Handler
+// Supports all cities with environment variables
 
 header('Content-Type: application/json');
 
-// Configuration
-$adminEmail = 'ops@emexexpress.de';
-$subjectPrefix = '[Washington Airfreight Inquiry]';
+// Import PHPMailer
+use PHPMailer\PHPMailer\PHPMailer;
+use PHPMailer\PHPMailer\SMTP;
+use PHPMailer\PHPMailer\Exception;
+
+// Load PHPMailer
+require 'vendor/autoload.php';
+
+// Configuration from Environment Variables
+$adminEmail = $_ENV['ADMIN_EMAIL'] ?? 'ops@emexexpress.de';
+$fromEmail = $_ENV['FROM_EMAIL'] ?? 'noreply@emexexpress.de';
+$cityName = $_ENV['CITY_NAME'] ?? 'Unknown';
+$smtpConfig = [
+    'host' => $_ENV['SMTP_HOST'] ?? 'mail.ionos.de',
+    'port' => intval($_ENV['SMTP_PORT'] ?? 587),
+    'username' => $_ENV['SMTP_USER'] ?? 'ops@emexexpress.de',
+    'password' => $_ENV['SMTP_PASS'] ?? '',
+    'encryption' => $_ENV['SMTP_ENCRYPTION'] ?? 'tls',
+    'from_email' => $fromEmail,
+    'from_name' => "Emex Express {$cityName}"
+];
+
+// City-specific configurations
+$cityConfigs = [
+    'Chicago' => [
+        'subject_prefix' => '[Chicago Airfreight Inquiry]',
+        'booking_prefix' => 'CHI',
+        'color' => '#1e40af'
+    ],
+    'New York' => [
+        'subject_prefix' => '[New York Airfreight Inquiry]',
+        'booking_prefix' => 'NYC',
+        'color' => '#dc2626'
+    ],
+    'UK' => [
+        'subject_prefix' => '[UK Airfreight Inquiry]',
+        'booking_prefix' => 'UK',
+        'color' => '#059669'
+    ],
+    'Washington' => [
+        'subject_prefix' => '[Washington Airfreight Inquiry]',
+        'booking_prefix' => 'WAS',
+        'color' => '#7c3aed'
+    ]
+];
+
+$config = $cityConfigs[$cityName] ?? $cityConfigs['Chicago'];
+$subjectPrefix = $config['subject_prefix'];
+$bookingPrefix = $config['booking_prefix'];
+$primaryColor = $config['color'];
 
 // Validate request method
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
@@ -72,19 +119,19 @@ foreach ($_POST as $key => $value) {
     }
 }
 
-// Create HTML email message
+// Create HTML email message with city-specific styling
 $htmlMessage = "
 <!DOCTYPE html>
 <html>
 <head>
     <meta charset='UTF-8'>
-    <title>Washington Airfreight Inquiry</title>
+    <title>{$cityName} Airfreight Inquiry</title>
     <style>
         body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-        .header { background: #1e40af; color: white; padding: 20px; text-align: center; }
+        .header { background: {$primaryColor}; color: white; padding: 20px; text-align: center; }
         .content { padding: 20px; }
         .section { margin-bottom: 25px; padding: 15px; border: 1px solid #e5e7eb; border-radius: 5px; }
-        .section h3 { color: #1e40af; margin-top: 0; border-bottom: 2px solid #1e40af; padding-bottom: 5px; }
+        .section h3 { color: {$primaryColor}; margin-top: 0; border-bottom: 2px solid {$primaryColor}; padding-bottom: 5px; }
         .field { margin-bottom: 8px; }
         .field strong { color: #374151; }
         .urgent { background: #fef3c7; border-left: 4px solid #f59e0b; padding: 10px; margin: 15px 0; }
@@ -93,9 +140,9 @@ $htmlMessage = "
 </head>
 <body>
     <div class='header'>
-        <h1>🚁 NEW AIRFREIGHT BOOKING INQUIRY - WASHINGTON</h1>
+        <h1>🚁 NEW AIRFREIGHT BOOKING INQUIRY - {$cityName}</h1>
         <p>Submitted: " . date('Y-m-d H:i:s') . "</p>
-        <p>Source: Washington Landing Page</p>
+        <p>Source: {$cityName} Landing Page</p>
     </div>
     
     <div class='content'>
@@ -171,52 +218,67 @@ $htmlMessage .= "
     </div>
     
     <div class='footer'>
-        <p>This inquiry was submitted via the Washington Airfreight Landing Page</p>
+        <p>This inquiry was submitted via the {$cityName} Airfreight Landing Page</p>
         <p>Emex Express - Air Freight Solutions | +49 69 247455280 | ops@emexexpress.de</p>
     </div>
 </body>
 </html>";
 
-// Plain text version for fallback
-$textMessage = "NEW AIRFREIGHT BOOKING INQUIRY - WASHINGTON\n";
+// Plain text version
+$textMessage = "NEW AIRFREIGHT BOOKING INQUIRY - {$cityName}\n";
 $textMessage .= "========================================\n\n";
 $textMessage .= "Submitted: " . date('Y-m-d H:i:s') . "\n";
-$textMessage .= "Source: Washington Landing Page\n\n";
+$textMessage .= "Source: {$cityName} Landing Page\n\n";
 $textMessage .= "Shipper: " . $bookingData['shipper_name'] . " (" . $bookingData['shipper_email'] . ")\n";
 $textMessage .= "Receiver: " . $bookingData['receiver_name'] . " in " . $bookingData['receiver_city'] . "\n";
 $textMessage .= "Route: " . ($bookingData['origin_airport'] ?? 'N/A') . " → " . ($bookingData['destination_airport'] ?? 'N/A') . "\n";
 $textMessage .= "Cargo: " . ($bookingData['cargo_description'] ?? 'N/A') . "\n";
 $textMessage .= "Weight: " . ($bookingData['weight'] ?? 'N/A') . " | Pieces: " . ($bookingData['pieces'] ?? 'N/A') . "\n";
 
-// Email headers for HTML email
-$headers = [
-    'From: Emex Express <noreply@emexexpress.de>',
-    'Reply-To: ' . $bookingData['shipper_email'],
-    'X-Mailer: PHP/' . phpversion(),
-    'MIME-Version: 1.0',
-    'Content-Type: text/html; charset=UTF-8'
-];
-
-// Send email
+// Send email via PHPMailer SMTP
 try {
     $subject = $subjectPrefix . ' - ' . $bookingData['shipper_name'] . ' to ' . $bookingData['receiver_city'];
     
-    if (mail($adminEmail, $subject, $htmlMessage, implode("\r\n", $headers))) {
-        // Success response
-        echo json_encode([
-            'success' => true,
-            'message' => 'Your airfreight inquiry has been submitted successfully. We will contact you shortly.',
-            'booking_id' => 'WAS' . date('YmdHis') . strtoupper(substr(md5(uniqid()), 0, 6))
-        ]);
-    } else {
-        throw new Exception('Email sending failed');
-    }
+    // Create PHPMailer instance
+    $mail = new PHPMailer(true);
+    
+    // Server settings
+    $mail->isSMTP();
+    $mail->Host       = $smtpConfig['host'];
+    $mail->SMTPAuth   = true;
+    $mail->Username   = $smtpConfig['username'];
+    $mail->Password   = $smtpConfig['password'];
+    $mail->SMTPSecure = $smtpConfig['encryption'];
+    $mail->Port       = $smtpConfig['port'];
+    
+    // Recipients
+    $mail->setFrom($smtpConfig['from_email'], $smtpConfig['from_name']);
+    $mail->addAddress($adminEmail);
+    $mail->addReplyTo($bookingData['shipper_email'], $bookingData['shipper_name']);
+    
+    // Content
+    $mail->isHTML(true);
+    $mail->Subject = $subject;
+    $mail->Body    = $htmlMessage;
+    $mail->AltBody = $textMessage;
+    
+    $mail->send();
+    
+    // Success response
+    echo json_encode([
+        'success' => true,
+        'message' => 'Your airfreight inquiry has been submitted successfully. We will contact you shortly.',
+        'booking_id' => $bookingPrefix . date('YmdHis') . strtoupper(substr(md5(uniqid()), 0, 6)),
+        'city' => $cityName
+    ]);
+    
 } catch (Exception $e) {
     http_response_code(500);
     echo json_encode([
         'success' => false,
         'message' => 'Failed to send inquiry. Please try again or contact us directly.',
-        'error' => $e->getMessage()
+        'error' => $mail->ErrorInfo,
+        'city' => $cityName
     ]);
 }
 ?>

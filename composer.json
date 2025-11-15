@@ -1,0 +1,12 @@
+{
+    "name": "emex/chicago-airfreight-booking",
+    "description": "Chicago Airfreight Booking System with SMTP",
+    "require": {
+        "phpmailer/phpmailer": "^6.8"
+    },
+    "autoload": {
+        "psr-4": {
+            "App\\": "src/"
+        }
+    }
+}
