@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://usa.emexexpress.de/sitemap.xml
+Sitemap: https://washington.emexexpress.de/sitemap.xml
