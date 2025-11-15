@@ -10,6 +10,7 @@ RUN apk add --no-cache \
     php-curl \
     php-json \
     php-openssl \
+    php-ctype \
     composer \
     && rm -rf /var/cache/apk/*
 
