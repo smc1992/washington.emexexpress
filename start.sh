@@ -1,28 +1,24 @@
 #!/bin/sh
 
-# Create PHP-FPM socket directory
-mkdir -p /run/php
+echo "Starting Emex Express Chicago Container..."
 
 # Fix permissions
-chown -R nginx:nginx /var/www/html /run/php /var/log/php
+chown -R nginx:nginx /var/www/html /var/log/php
 
-# Start PHP-FPM in background with explicit config
-php-fpm -y /etc/php/php-fpm.conf -F &
+# Start PHP-FPM in background
+echo "Starting PHP-FPM on port 9000..."
+php-fpm --daemonize
 
-# Wait for PHP-FPM to create socket
-sleep 3
+# Wait for PHP-FPM to start
+echo "Waiting for PHP-FPM to start..."
+sleep 5
 
-# Check if socket exists
-if [ ! -S /run/php/php-fpm.sock ]; then
-    echo "PHP-FPM socket not found, checking processes..."
-    ps aux | grep php-fpm
-    echo "Starting PHP-FPM with alternative method..."
-    php-fpm8 -y /etc/php8/php-fpm.conf -F &
-    sleep 2
-fi
+# Test PHP-FPM connection
+echo "Testing PHP-FPM connection..."
+nc -z 127.0.0.1 9000 && echo "PHP-FPM is running" || echo "PHP-FPM failed to start"
 
-# Test PHP-FPM
-echo "Testing PHP-FPM..."
+# Test PHP
+echo "Testing PHP installation..."
 php -v
 
 # Start Nginx in foreground

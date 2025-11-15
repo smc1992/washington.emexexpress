@@ -15,13 +15,11 @@ RUN apk add --no-cache \
     php-tokenizer \
     php-openssl \
     composer \
+    netcat-openbsd \
     && rm -rf /var/cache/apk/*
 
-# Configure PHP-FPM to use Unix socket
-RUN sed -i 's/listen = 127.0.0.1:9000/listen = \/run\/php\/php-fpm.sock/' /etc/php*/php-fpm.d/www.conf && \
-    sed -i 's/;listen.owner = nobody/listen.owner = nginx/' /etc/php*/php-fpm.d/www.conf && \
-    sed -i 's/;listen.group = nobody/listen.group = nginx/' /etc/php*/php-fpm.d/www.conf && \
-    sed -i 's/;listen.mode = 0660/listen.mode = 0660/' /etc/php*/php-fpm.d/www.conf
+# Configure PHP-FPM to use TCP port 9000 (more reliable in containers)
+RUN sed -i 's/listen = \/run\/php\/php-fpm.sock/listen = 127.0.0.1:9000/' /etc/php*/php-fpm.d/www.conf
 
 # Set working directory
 WORKDIR /var/www/html
