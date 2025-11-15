@@ -155,14 +155,31 @@ $htmlMessage = "
 $htmlMessage .= "
         <div class='section'>
             <h3>📦 SHIPMENT DETAILS</h3>
-            <div class='field'><strong>Shipment Type:</strong> " . ($bookingData['shipment_type'] ?? 'N/A') . "</div>
-            <div class='field'><strong>Origin Airport:</strong> " . ($bookingData['origin_airport'] ?? 'N/A') . "</div>
-            <div class='field'><strong>Destination Airport:</strong> " . ($bookingData['destination_airport'] ?? 'N/A') . "</div>
-            <div class='field'><strong>Number of Pieces:</strong> " . ($bookingData['pieces'] ?? 'N/A') . "</div>
-            <div class='field'><strong>Weight:</strong> " . ($bookingData['weight'] ?? 'N/A') . "</div>
-            <div class='field'><strong>Dimensions:</strong> " . ($bookingData['dimensions'] ?? 'N/A') . "</div>
-            <div class='field'><strong>Cargo Description:</strong> " . ($bookingData['cargo_description'] ?? 'N/A') . "</div>
-        </div>";
+            <div class='field'><strong>Origin:</strong> " . ($bookingData['origin'] ?? 'N/A') . "</div>
+            <div class='field'><strong>Destination:</strong> " . ($bookingData['destination'] ?? 'N/A') . "</div>
+            <div class='field'><strong>Service Type:</strong> " . ($bookingData['service'] ?? 'N/A') . "</div>
+            <div class='field'><strong>Goods Type:</strong> " . ($bookingData['goods_type'] ?? 'N/A') . "</div>
+            <div class='field'><strong>Package Type:</strong> " . ($bookingData['package_type'] ?? 'N/A') . "</div>
+            <div class='field'><strong>Goods Value:</strong> " . ($bookingData['goods_value'] ?? 'N/A') . "</div>
+            <div class='field'><strong>Dimension Unit:</strong> " . ($bookingData['dimension_unit'] ?? 'N/A') . "</div>
+            <div class='field'><strong>Weight Unit:</strong> " . ($bookingData['weight_unit'] ?? 'N/A') . "</div>";
+
+// Add dynamic cargo dimensions (multiple pieces)
+for ($i = 1; $i <= 10; $i++) {
+    if (!empty($bookingData["pieces_$i"])) {
+        $htmlMessage .= "
+            <div class='field' style='margin-top: 10px; padding-top: 10px; border-top: 1px solid #e5e7eb;'>
+                <strong>Package $i:</strong><br>
+                Pieces: " . ($bookingData["pieces_$i"] ?? 'N/A') . " | 
+                Dimensions: " . ($bookingData["length_$i"] ?? 'N/A') . "×" . ($bookingData["width_$i"] ?? 'N/A') . "×" . ($bookingData["height_$i"] ?? 'N/A') . " " . ($bookingData['dimension_unit'] ?? 'N/A') . " | 
+                Weight: " . ($bookingData["weight_$i"] ?? 'N/A') . " " . ($bookingData['weight_unit'] ?? 'N/A') . " (" . ($bookingData["weight_type_$i"] ?? 'N/A') . ")<br>
+                Stackable: " . ($bookingData["stackable_$i"] ?? 'No') . " | 
+                Turnable: " . ($bookingData["turnable_$i"] ?? 'No') . "
+            </div>";
+    }
+}
+
+$htmlMessage .= "</div>";
 
 // Add Shipper Information
 $htmlMessage .= "
@@ -231,9 +248,26 @@ $textMessage .= "Submitted: " . date('Y-m-d H:i:s') . "\n";
 $textMessage .= "Source: {$cityName} Landing Page\n\n";
 $textMessage .= "Shipper: " . $bookingData['shipper_name'] . " (" . $bookingData['shipper_email'] . ")\n";
 $textMessage .= "Receiver: " . $bookingData['receiver_name'] . " in " . $bookingData['receiver_city'] . "\n";
-$textMessage .= "Route: " . ($bookingData['origin_airport'] ?? 'N/A') . " → " . ($bookingData['destination_airport'] ?? 'N/A') . "\n";
-$textMessage .= "Cargo: " . ($bookingData['cargo_description'] ?? 'N/A') . "\n";
-$textMessage .= "Weight: " . ($bookingData['weight'] ?? 'N/A') . " | Pieces: " . ($bookingData['pieces'] ?? 'N/A') . "\n";
+$textMessage .= "Route: " . ($bookingData['origin'] ?? 'N/A') . " → " . ($bookingData['destination'] ?? 'N/A') . "\n";
+$textMessage .= "Service: " . ($bookingData['service'] ?? 'N/A') . "\n";
+$textMessage .= "Goods: " . ($bookingData['goods_type'] ?? 'N/A') . " (Value: " . ($bookingData['goods_value'] ?? 'N/A') . ")\n";
+
+// Add package summary
+$packageCount = 0;
+$totalWeight = 0;
+for ($i = 1; $i <= 10; $i++) {
+    if (!empty($bookingData["pieces_$i"])) {
+        $packageCount += intval($bookingData["pieces_$i"]);
+        $weight = floatval($bookingData["weight_$i"]);
+        if ($bookingData["weight_type_$i"] === 'Per Item') {
+            $weight *= intval($bookingData["pieces_$i"]);
+        }
+        $totalWeight += $weight;
+    }
+}
+$textMessage .= "Packages: {$packageCount} | Total Weight: {$totalWeight} " . ($bookingData['weight_unit'] ?? 'kg') . "\n";
+$textMessage .= "Transport: " . ($bookingData['transport_mode'] ?? 'N/A') . " | Incoterms: " . ($bookingData['incoterms'] ?? 'N/A') . "\n";
+$textMessage .= "Special: " . ($bookingData['special'] ?? 'None') . " | Insurance: " . ($bookingData['insurance'] ?? 'N/A') . "\n";
 
 // Send email via PHPMailer SMTP
 try {
