@@ -1,7 +1,7 @@
 #!/bin/sh
 
-# Start PHP-FPM
-php-fpm8 &
+# Start PHP-FPM (try different commands for Alpine compatibility)
+php-fpm8 || php-fpm || /usr/sbin/php-fpm8 &
 
 # Wait for PHP-FPM to start
 sleep 2
