@@ -14,8 +14,8 @@ RUN apk add --no-cache \
     && rm -rf /var/cache/apk/*
 
 # Simple PHP-FPM configuration
-RUN echo "listen = 127.0.0.1:9000" >> /etc/php8/php-fpm.d/www.conf && \
-    echo "clear_env = no" >> /etc/php8/php-fpm.d/www.conf
+RUN echo "listen = 127.0.0.1:9000" >> /etc/php83/php-fpm.d/www.conf && \
+    echo "clear_env = no" >> /etc/php83/php-fpm.d/www.conf
 
 # Set working directory
 WORKDIR /var/www/html
@@ -28,7 +28,7 @@ RUN composer install --no-dev --optimize-autoloader
 
 # Simple startup script
 RUN echo '#!/bin/sh' > /start.sh && \
-    echo 'php-fpm8 &' >> /start.sh && \
+    echo 'php-fpm83 &' >> /start.sh && \
     echo 'sleep 2' >> /start.sh && \
     echo 'nginx -g "daemon off;"' >> /start.sh && \
     chmod +x /start.sh
